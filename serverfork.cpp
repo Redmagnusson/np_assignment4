@@ -75,8 +75,7 @@ int main(int argc, char *argv[]){
 		printf("Listen failed: %s\n", strerror(errno));
 	} else printf("Server listening\n");
 	
-
-	//How many forks am i supposed to have?
+	//Fork once or for to 10 processes?
 	//Fork process (we now have 2 processes)
 	fork();
 	pid_t my_pid = getpid();
@@ -110,6 +109,26 @@ int main(int argc, char *argv[]){
 		//Check if its a GET or HEAD
 		if(strcmp(command, "GET") == 0){
 			//If GET, open file and return 
+			
+			//Check if valid path
+			int nrOf;
+			for(int i = 0;i < bytesRecv;i++){
+				if(client_message[i] == '/'){
+					nrOf++;
+				}
+			}
+			if(nrOf == 3){
+				//Open filepath
+				
+				//Extract data
+				
+			}
+			else{
+				//Wrong path. Send error?
+			}
+			
+			
+			
 		}
 		else if(strcmp(command, "HEAD") == 0){
 			//If HEAD, ????
