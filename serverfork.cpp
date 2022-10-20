@@ -76,27 +76,54 @@ int main(int argc, char *argv[]){
 	} else printf("Server listening\n");
 	
 
-	//Fork process
-	
-	//Accept Client
-	char server_message[CAP], client_message[CAP];
-	struct sockaddr_in clientinfo;
-	int len;
-	int clientfd;
-	if(accept(serverfd, (struct sockaddr*)&clientinfo, (socklen_t*)&len) < 0){
-		printf("Accept error: %s\n", strerror(errno));
-	} printf("Accepted client\n");
-	
-	//Read Data
-	
-	//Process Message
-	
-	//Open File
-	
-	//Return Data
+	//How many forks am i supposed to have?
+	//Fork process (we now have 2 processes)
+	fork();
+	pid_t my_pid = getpid();
+	printf("Forked. PID: %d\n", my_pid);
 
-	//Kill Child?
-  
+	while(true){
+
+		//Accept Client
+		char server_message[CAP], client_message[CAP];
+		int bytesRecv;
+		struct sockaddr_in clientinfo;
+		int len;
+		int clientfd;
+		clientfd = accept(serverfd, (struct sockaddr*)&clientinfo, (socklen_t*)&len);
+		if(clientfd < 0){
+			printf("Accept error: %s\n", strerror(errno));
+		} printf("Accepted client\n");
+	
+		//Read Data
+		bytesRecv = recv(clientfd, client_message, CAP, NULL);
+		if(bytesRecv == 0){
+			//Client dropped
+		}
+		//Add loop for double \n ?
+		printf("PID: %d, received message: %s\n", my_pid, client_message);
+	
+		//Process Message
+		char* copy; strcpy(copy, client_message); //Copy message so we dont split the OG message
+		char* command = strtok(copy, " ");
+		
+		//Check if its a GET or HEAD
+		if(strcmp(command, "GET") == 0){
+			//If GET, open file and return 
+		}
+		else if(strcmp(command, "HEAD") == 0){
+			//If HEAD, ????
+		}
+		//Wrong command. Close connection?
+		else printf("Invalid command: %s\n", command);
+		
+		//Check version?
+	
+		//Return Data
+
+		//Kill Child?
+		return(0);
+  }
   printf("Done.\n");
   return(0);
 
