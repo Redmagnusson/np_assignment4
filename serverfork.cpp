@@ -30,7 +30,6 @@ int main(int argc, char *argv[]){
 	int serverfd;
 	struct sockaddr_in client;
 	
-  
   //Get argv
   while(p != NULL){
   	//Look for the amount of ":" in argv to determine if ipv4 or ipv6
@@ -87,7 +86,7 @@ int main(int argc, char *argv[]){
 	//Fork process (we now have 2 processes)
 	fork();
 	pid_t my_pid = getpid();
-	printf("Forked. PID: %d\n", my_pid);
+	//printf("Forked. PID: %d\n", my_pid);
 
 	while(true){
 	
@@ -114,10 +113,10 @@ int main(int argc, char *argv[]){
 	
 		//Process Message
 		char* copy = (char*)malloc(CAP); strcpy(copy, client_message); //Copy message so we dont split the OG message
-		char* command = strtok(copy, " /");
+		char* command = strtok(copy, "/");
 		
 		//Check if its a GET or HEAD
-		if(strcmp(command, "GET") == 0){
+		if(strcmp(command, "GET ") == 0){
 			//If GET, open file and return 
 			printf("Command: \"GET\" recognized\n");
 			
@@ -132,7 +131,7 @@ int main(int argc, char *argv[]){
 				}
 			}
 			printf("Path: %s contains %d\n", path, nrOf);
-			if(nrOf == 3){
+			if(nrOf < 4){
 				//Open filepath
 				printf("Valid path\n");
 				FILE *filePtr;
@@ -144,17 +143,8 @@ int main(int argc, char *argv[]){
 				else printf("File opened\n");
 				//Extract data and store it into the buffer
 				fscanf(filePtr, "%s", server_message);
+				fclose(filePtr);
 				
-			}
-			else if(nrOf == 0){
-				FILE *filePtr;
-				filePtr = fopen("randomFile", "r");
-				if(filePtr == NULL){
-					printf("Failed to open file: filePtr == NULL\n");
-					exit(0);
-				}
-				else printf("File opened\n");
-				fscanf(filePtr, "%s", server_message);
 			}
 			else{
 				//Wrong path. Send error?
@@ -177,11 +167,13 @@ int main(int argc, char *argv[]){
 		//Check version?
 		
 		//Return Data
+		//sprintf(server_message, "HTTP/1.1 OK\n\n MESSAGE");
 		printf("Server msg: %s\n", server_message);
 		if(send(clientfd, &server_message, strlen(server_message), 0) < 0){
 			printf("Error sending: %s\n", strerror(errno));
 		} else printf("Message sent\n");
-		//Kill Child?
+		//Check for send to finish?
+		sleep(5);
 		close(clientfd);
   }
   printf("Done.\n");
