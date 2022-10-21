@@ -146,6 +146,16 @@ int main(int argc, char *argv[]){
 				fscanf(filePtr, "%s", server_message);
 				
 			}
+			else if(nrOf == 0){
+				FILE *filePtr;
+				filePtr = fopen("randomFile", "r");
+				if(filePtr == NULL){
+					printf("Failed to open file: filePtr == NULL\n");
+					exit(0);
+				}
+				else printf("File opened\n");
+				fscanf(filePtr, "%s", server_message);
+			}
 			else{
 				//Wrong path. Send error?
 				printf("Path does not exist\n");
@@ -167,7 +177,8 @@ int main(int argc, char *argv[]){
 		//Check version?
 		
 		//Return Data
-		if(send(clientfd, &server_message, strlen(server_message), 0) <0){
+		printf("Server msg: %s\n", server_message);
+		if(send(clientfd, &server_message, strlen(server_message), 0) < 0){
 			printf("Error sending: %s\n", strerror(errno));
 		} else printf("Message sent\n");
 		//Kill Child?
