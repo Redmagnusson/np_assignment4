@@ -15,7 +15,7 @@
 #include <sys/select.h>
 #include <sys/time.h>
 
-int CAP = 10000;
+int CAP = 2000;
 using namespace std;
 
 int main(int argc, char *argv[]){
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]){
 	} else printf("Getaddrinfo success\n");
 	
 	//Create socket
-	serverfd = socket(serverinfo->ai_family, serverinfo->ai_socktype, 0);
+	serverfd = socket(serverinfo->ai_family, serverinfo->ai_socktype, serverinfo->ai_protocol);
 	if(serverfd < 0){
 		printf("Error creating socket: %s\n", strerror(errno));
 		exit(0);
@@ -89,25 +89,35 @@ int main(int argc, char *argv[]){
 	//printf("Forked. PID: %d\n", my_pid);
 
 	while(true){
-	
+	char buffer2[21];
 		//Accept Client
 		char server_message[CAP], client_message[CAP];
 		int bytesRecv;
 		struct sockaddr_in clientinfo;
-		int len;
+		socklen_t len = sizeof(clientinfo);
 		int clientfd;
-		clientfd = accept(serverfd, (struct sockaddr*)&clientinfo, (socklen_t*)&len);
+		clientfd = accept(serverfd, (struct sockaddr*)&clientinfo, &len);
 		if(clientfd < 0){
 			printf("Accept error: %s\n", strerror(errno));
 		} printf("Accepted client\n");
 	
 		//Read Data
+		char msg[100];
+		memset(msg, 0, 100);
 		bytesRecv = recv(clientfd, client_message, CAP, NULL);
+		//bytesRecv = recv(clientfd, &msg, sizeof(msg), 0);
 		if(bytesRecv == 0){
 			//Client dropped
-			close(clientfd);
+			printf("Dropping client\n");
+			//close(clientfd);
 			continue;
 		}
+		printf("Client msg: %s\n", client_message);
+		char buffer3[20] = "HTTP/1.1 200 OK\r\n\r\n";
+				if(write(clientfd, buffer3, sizeof(buffer3)-1) < 0){
+			printf("Error sending: %s\n", strerror(errno));
+		} else printf("Message sent\n");
+		//continue;
 		//Add loop for double \n ?
 		printf("PID: %d, received message: %s\n", my_pid, client_message);
 	
@@ -142,7 +152,10 @@ int main(int argc, char *argv[]){
 				}
 				else printf("File opened\n");
 				//Extract data and store it into the buffer
-				fscanf(filePtr, "%s", server_message);
+				//fscanf(filePtr, "%s", server_message);
+				fseek(filePtr, 0, SEEK_SET);
+				fread(buffer2, sizeof(char), sizeof(buffer2), filePtr);
+				//fscanf(filePtr, "%s", buffer2);
 				fclose(filePtr);
 				
 			}
@@ -161,19 +174,25 @@ int main(int argc, char *argv[]){
 		//Wrong command. Close connection?
 		else{
 			printf("Invalid command: %s\n", command);
-			close(clientfd);
+			//close(clientfd);
 			continue;
 		}	
 		//Check version?
 		
 		//Return Data
-		//sprintf(server_message, "HTTP/1.1 OK\n\n MESSAGE");
-		printf("Server msg: %s\n", server_message);
-		if(send(clientfd, &server_message, strlen(server_message), 0) < 0){
+		char* finalMessage = (char*)malloc(CAP);
+		char buffer[20] = "HTTP/1.1 200 OK\r\n\r\n";
+		
+		//sprintf(finalMessage, "HTTP/1.1 200 OK\r\n%s\r\n\r\n", server_message);
+		printf("Strlen: %d, Sizeof: %d", strlen(server_message), sizeof(server_message));
+		//if(send(clientfd, &buffer, sizeof(buffer), 0) < 0){
+			//printf("Error sending: %s\n", strerror(errno));
+		//} else printf("Message sent\n");
+				if(write(clientfd, &buffer2, sizeof(buffer2)) < 0){
 			printf("Error sending: %s\n", strerror(errno));
-		} else printf("Message sent\n");
+		} else printf("Message sent: %s\n", buffer2);
 		//Check for send to finish?
-		sleep(5);
+		//sleep(5);
 		close(clientfd);
   }
   printf("Done.\n");
