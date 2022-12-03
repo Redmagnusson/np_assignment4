@@ -1,8 +1,8 @@
 #!/bin/bash
 
 ##Variables update as to fit your scenario
-portFORK=8282
-portTHREAD=8283
+portFORK=50000
+portTHREAD=50000
 testing=1
 
 head -c 10000 < /dev/urandom > big
