@@ -23,7 +23,7 @@ void handleMessage(int* clientfd){
 		//printf("Fork entered function\n");
 		char client_message[CAP];
 		memset(client_message, 0, CAP);
-		char buffer2[10000]; // CHANGE THIS TO DYNAMIC
+		char buffer2[100]; // CHANGE THIS TO DYNAMIC
 		int bytesRecv = 0;
 		char msg[100];
 		memset(msg, 0, 100);
@@ -213,11 +213,15 @@ int main(int argc, char *argv[]){
 			
 		
 		}
-		else close(clientfd);
+		else{
+		 close(clientfd);
+		 forkID = -1;
+		 }
 		
 		if(forkID == 0){
-			//kill(forkID, SIGKILL);
 			close(clientfd);
+			kill(getpid(), SIGKILL);
+			
 		}
 		//forkID = wait(NULL);
   }
