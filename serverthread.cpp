@@ -22,33 +22,35 @@ pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 using namespace std;
 void* handleMessage(void* client){
 
+
 		pthread_mutex_lock(&lock);
 		
-		
-		int *clientfd = (int*) client;
-		printf("Fork entered function\n");
+		int clientfd = *(int*) client;
+		printf("Thread entered function\n");
 		char client_message[CAP];
 		memset(client_message, 0, CAP);
 		int bytesRecv = 0;
 
 		//Read Client Data
-		bytesRecv = recv(*clientfd, client_message, CAP, NULL);
+		printf("Reading Data\n");
+		bytesRecv = recv(clientfd, client_message, CAP, NULL);
 		if(bytesRecv == 0){
 			//Client dropped
 			printf("Failed to recv, dropping client: %s\n", strerror(errno));
 			//return;
-		} else printf("%s\n", client_message);
+		} //else printf("%s\n", client_message);
 		
+		printf("Processing\n");
 		//Process Message
 		char* command = strtok(client_message, "/");
 		char* path = strtok(NULL, " ");
 		char* http = strtok(NULL, "\n");
+		printf("%s%s%s\n", command, path, http);
+		printf("Checking command\n");
 		http[strlen(http)-1] = NULL;
 		int sizeOfFile = 0;
 		FILE *filePtr;
-		printf("%s%s%s\n", command, path, http);
 		
-
 		//Check if its a GET or HEAD
 		if(strcmp(command, "GET ") == 0){
 			//If GET, open file and return 
@@ -72,7 +74,7 @@ void* handleMessage(void* client){
 					printf("Path is NULL\n");
 					char message[26];
 					sprintf(message, "%s 404 Not Found\r\n\r\n", http);
-					if(write(*clientfd, &message, sizeof(message)) < 0){
+					if(write(clientfd, &message, sizeof(message)) < 0){
 						printf("Error sending: %s\n", strerror(errno));
 					} //else printf("Message sent: %s\n");
 
@@ -82,7 +84,7 @@ void* handleMessage(void* client){
 					//Send OK
 					char message[20];
 					sprintf(message, "%s 200 OK\r\n\r\n", http);
-					if(write(*clientfd, &message, sizeof(message)) < 0){
+					if(write(clientfd, &message, sizeof(message)) < 0){
 						printf("Error sending: %s\n", strerror(errno));
 					} //else printf("Message sent: %s\n");
 				
@@ -95,7 +97,7 @@ void* handleMessage(void* client){
 					fseek(filePtr, 0, SEEK_SET);
 					fread(buffer2, sizeof(char), sizeof(buffer2), filePtr);
 					fclose(filePtr);
-					if(write(*clientfd, &buffer2, sizeof(buffer2)) < 0){
+					if(write(clientfd, &buffer2, sizeof(buffer2)) < 0){
 							printf("Error sending: %s\n", strerror(errno));
 					} //else printf("Message sent: %s\n");
 					
@@ -107,7 +109,7 @@ void* handleMessage(void* client){
 				printf("Path does not exist\n");
 				char message[26];
 				sprintf(message, "%s 404 Not Found\r\n\r\n", http);
-				if(write(*clientfd, &message, sizeof(message)) < 0){
+				if(write(clientfd, &message, sizeof(message)) < 0){
 					printf("Error sending: %s\n", strerror(errno));
 				} //else printf("Message sent: %s\n");
 			}
@@ -117,7 +119,7 @@ void* handleMessage(void* client){
 			//If HEAD, make header?
 			char message[20];
 			sprintf(message, "%s 200 OK\r\n\r\n", http);
-			if(write(*clientfd, &message, sizeof(message)) < 0){
+			if(write(clientfd, &message, sizeof(message)) < 0){
 				printf("Error sending: %s\n", strerror(errno));
 			} //else printf("Message sent: %s\n");
 		}
@@ -128,15 +130,15 @@ void* handleMessage(void* client){
 			//Add error 400?
 			char message[26];
 			sprintf(message, "%s 404 Not Found\r\n\r\n", http);
-			if(write(*clientfd, &message, sizeof(message)) < 0){
+			if(write(clientfd, &message, sizeof(message)) < 0){
 				printf("Error sending: %s\n", strerror(errno));
 			} //else printf("Message sent: %s\n");
 		}	
-		pthread_mutex_unlock(&lock);
-		close(*clientfd);
+		close(clientfd);
 
+		pthread_mutex_unlock(&lock);
 		pthread_detach(pthread_self());
-		return NULL;
+		//return NULL;
 }
 int main(int argc, char *argv[]){
   
@@ -205,9 +207,10 @@ int main(int argc, char *argv[]){
 	
 	//Fork process (we now have 2 processes)
 	//fork();
-	pid_t my_pid = getpid();
+	//pid_t my_pid = getpid();
 	//printf("Forked. PID: %d\n", my_pid);
 
+	signal(SIGPIPE, SIG_IGN);
 	while(true){
 	
 	
