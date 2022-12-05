@@ -23,7 +23,7 @@ void handleMessage(int* clientfd){
 		//printf("Fork entered function\n");
 		char client_message[CAP];
 		memset(client_message, 0, CAP);
-		char buffer2[100]; // CHANGE THIS TO DYNAMIC
+		char buffer2[10000]; // CHANGE THIS TO DYNAMIC
 		int bytesRecv = 0;
 		char msg[100];
 		memset(msg, 0, 100);
@@ -70,6 +70,10 @@ void handleMessage(int* clientfd){
 				filePtr = fopen(path, "r");
 				if(filePtr == NULL){
 					printf("Failed to open path: %s\n", strerror(errno));
+					char errorBuffer[30] = "HTTP/1.0 404 Not Found\r\n\r\n";
+					if(write(*clientfd, &errorBuffer, sizeof(errorBuffer)) < 0){
+						printf("Error sending: %s\n", strerror(errno));
+					} else printf("404 sent\n");
 					exit(0);
 				}
 				else //printf("File opened\n");
@@ -84,6 +88,10 @@ void handleMessage(int* clientfd){
 			else{
 				//Wrong path. Send error?
 				printf("Path does not exist\n");
+				char errorBuffer[30] = "HTTP/1.0 404 Not Found\r\n\r\n";
+				if(write(*clientfd, &errorBuffer, sizeof(errorBuffer)) < 0){
+					printf("Error sending: %s\n", strerror(errno));
+				} //else printf("Message sent: %s\n");
 				//close(*clientfd);
 				//return 0;
 			}
@@ -204,14 +212,25 @@ int main(int argc, char *argv[]){
 	
 	
 		//Fork process
-		pid_t forkID = fork();
+		
+		pid_t forkID;
+		for(int i = 0;i<3;i++){
+		
+			forkID = fork();
+			if(forkID == -1){
+				printf("Fork failed: %s\n", strerror(errno));
+				sleep(1);
+			}
+			else{
+				break;
+			}
+		}
+		 
 		//Check if the process is a child
 		if(forkID == 0){
 			//printf("Fork successfull\n");
-			//close(serverfd);
+			close(serverfd);
 			handleMessage(&clientfd);
-			
-		
 		}
 		else{
 		 close(clientfd);
@@ -220,7 +239,8 @@ int main(int argc, char *argv[]){
 		
 		if(forkID == 0){
 			close(clientfd);
-			kill(getpid(), SIGKILL);
+			//kill(getpid(), SIGKILL);
+			exit(0);
 			
 		}
 		//forkID = wait(NULL);
