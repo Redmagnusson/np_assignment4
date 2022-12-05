@@ -23,38 +23,31 @@ void handleMessage(int* clientfd){
 		//printf("Fork entered function\n");
 		char client_message[CAP];
 		memset(client_message, 0, CAP);
-		char buffer2[10000]; // CHANGE THIS TO DYNAMIC
 		int bytesRecv = 0;
-		char msg[100];
-		memset(msg, 0, 100);
 
-		//Read Data
+		//Read Client Data
 		bytesRecv = recv(*clientfd, client_message, CAP, NULL);
 		if(bytesRecv == 0){
 			//Client dropped
 			printf("Failed to recv, dropping client: %s\n", strerror(errno));
-			//close(*clientfd);
 			return;
-		}
-		//printf("Fork msg: %s\n", client_message);
-		char buffer3[20] = "HTTP/1.1 200 OK\r\n\r\n";
-		if(write(*clientfd, buffer3, sizeof(buffer3)-1) < 0){
-			printf("Error sending: %s\n", strerror(errno));
-			//close(*clientfd);
-			return;
-		} //else printf("Message sent\n");
+		} //else printf("%s\n", client_message);
 		
 		//Process Message
 		char* command = strtok(client_message, "/");
+		char* path = strtok(NULL, " ");
+		char* http = strtok(NULL, "\n");
+		http[strlen(http)-1] = NULL;
+		int sizeOfFile = 0;
+		FILE *filePtr;
+		//printf("%s%s%s\n", command, path, http);
 		
-		//printf("Command: %s\n", command);
+
 		//Check if its a GET or HEAD
 		if(strcmp(command, "GET ") == 0){
 			//If GET, open file and return 
 			//printf("Command: \"GET\" recognized\n");
 			
-			//Get path
-			char* path = strtok(NULL, " ");
 			//Check if valid path
 			int nrOf = 0;
 			for(int i = 1;i < strlen(path);i++){
@@ -66,63 +59,73 @@ void handleMessage(int* clientfd){
 			if(nrOf < 4){
 				//Open filepath
 				//printf("Valid path: %s\n", path);
-				FILE *filePtr;
 				filePtr = fopen(path, "r");
+	
 				if(filePtr == NULL){
-					printf("Failed to open path: %s\n", strerror(errno));
-					char errorBuffer[30] = "HTTP/1.0 404 Not Found\r\n\r\n";
-					if(write(*clientfd, &errorBuffer, sizeof(errorBuffer)) < 0){
+					//Incorrect path, adding error message
+					printf("Path is NULL\n");
+					char message[26];
+					sprintf(message, "%s 404 Not Found\r\n\r\n", http);
+					if(write(*clientfd, &message, sizeof(message)) < 0){
 						printf("Error sending: %s\n", strerror(errno));
-					} else printf("404 sent\n");
-					exit(0);
+					} //else printf("Message sent: %s\n");
+
 				}
-				else //printf("File opened\n");
-				//Extract data and store it into the buffer
+				else{
+					//printf("File opened\n");
+					//Send OK
+					char message[20];
+					sprintf(message, "%s 200 OK\r\n\r\n", http);
+					if(write(*clientfd, &message, sizeof(message)) < 0){
+						printf("Error sending: %s\n", strerror(errno));
+					} //else printf("Message sent: %s\n");
 				
-				fseek(filePtr, 0, SEEK_SET);
-				fread(buffer2, sizeof(char), sizeof(buffer2), filePtr);
-				//fscanf(filePtr, "%s", buffer2);
-				fclose(filePtr);
-				
+					//Get filesize
+					fseek(filePtr, 0, SEEK_END);
+					sizeOfFile = ftell(filePtr);
+					
+					//Send data
+					char buffer2[sizeOfFile];
+					fseek(filePtr, 0, SEEK_SET);
+					fread(buffer2, sizeof(char), sizeof(buffer2), filePtr);
+					fclose(filePtr);
+					if(write(*clientfd, &buffer2, sizeof(buffer2)) < 0){
+							printf("Error sending: %s\n", strerror(errno));
+					} //else printf("Message sent: %s\n");
+					
+					
+				}
 			}
 			else{
-				//Wrong path. Send error?
+				//Wrong path. Adding error message
 				printf("Path does not exist\n");
-				char errorBuffer[30] = "HTTP/1.0 404 Not Found\r\n\r\n";
-				if(write(*clientfd, &errorBuffer, sizeof(errorBuffer)) < 0){
+				char message[26];
+				sprintf(message, "%s 404 Not Found\r\n\r\n", http);
+				if(write(*clientfd, &message, sizeof(message)) < 0){
 					printf("Error sending: %s\n", strerror(errno));
 				} //else printf("Message sent: %s\n");
-				//close(*clientfd);
-				//return 0;
 			}
 			
 		}
-				else if(strcmp(command, "HEAD") == 0){
+		else if(strcmp(command, "HEAD ") == 0){
 			//If HEAD, make header?
+			char message[20];
+			sprintf(message, "%s 200 OK\r\n\r\n", http);
+			if(write(*clientfd, &message, sizeof(message)) < 0){
+				printf("Error sending: %s\n", strerror(errno));
+			} //else printf("Message sent: %s\n");
 		}
+		
 		//Wrong command. Close connection?
 		else{
 			printf("Invalid command: %s\n", command);
-			//close(clientfd);
-			//continue;
+			//Add error 400?
+			char message[26];
+			sprintf(message, "%s 404 Not Found\r\n\r\n", http);
+			if(write(*clientfd, &message, sizeof(message)) < 0){
+				printf("Error sending: %s\n", strerror(errno));
+			} //else printf("Message sent: %s\n");
 		}	
-		//Check version?
-		
-		//printf("Returning data\n");
-		//Return Data
-		char* finalMessage = (char*)malloc(CAP);
-		char buffer[20] = "HTTP/1.1 200 OK\r\n\r\n";
-		
-		//sprintf(finalMessage, "HTTP/1.1 200 OK\r\n%s\r\n\r\n", buffer2);
-		//printf("Strlen: %d, Sizeof: %d\n", strlen(buffer2), sizeof(buffer2));
-		//if(send(clientfd, &buffer, sizeof(buffer), 0) < 0){
-			//printf("Error sending: %s\n", strerror(errno));
-		//} else printf("Message sent\n");
-		if(write(*clientfd, &buffer2, sizeof(buffer2)) < 0){
-			printf("Error sending: %s\n", strerror(errno));
-		} //else printf("Message sent: %s\n");
-
-		//close(*clientfd);
 		
 
 }
