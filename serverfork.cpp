@@ -89,6 +89,7 @@ void handleMessage(int* clientfd){
 					fseek(filePtr, 0, SEEK_SET);
 					fread(buffer2, sizeof(char), sizeof(buffer2), filePtr);
 					fclose(filePtr);
+					printf("%d, %d, %d\n", sizeof(buffer2), strlen(buffer2), sizeOfFile);
 					if(write(*clientfd, &buffer2, sizeof(buffer2)) < 0){
 							printf("Error sending: %s\n", strerror(errno));
 					} //else printf("Message sent: %s\n");

@@ -23,38 +23,39 @@ using namespace std;
 void* handleMessage(void* client){
 
 
-		pthread_mutex_lock(&lock);
+		//pthread_mutex_lock(&lock);
 		
-		int clientfd = *(int*) client;
-		printf("Thread entered function\n");
+		//int clientfd = *(int*) client;
+		int* clientfd = (int*)client;
+		//printf("Thread entered function\n");
 		char client_message[CAP];
 		memset(client_message, 0, CAP);
 		int bytesRecv = 0;
 
 		//Read Client Data
-		printf("Reading Data\n");
-		bytesRecv = recv(clientfd, client_message, CAP, NULL);
+		//printf("Reading Data\n");
+		bytesRecv = recv(*clientfd, client_message, CAP, NULL);
 		if(bytesRecv == 0){
 			//Client dropped
 			printf("Failed to recv, dropping client: %s\n", strerror(errno));
 			//return;
 		} //else printf("%s\n", client_message);
 		
-		printf("Processing\n");
+		//printf("Processing\n");
 		//Process Message
 		char* command = strtok(client_message, "/");
 		char* path = strtok(NULL, " ");
 		char* http = strtok(NULL, "\n");
-		printf("%s%s%s\n", command, path, http);
-		printf("Checking command\n");
+		//printf("%s%s%s\n", command, path, http);
+		//printf("Checking command\n");
 		http[strlen(http)-1] = NULL;
-		int sizeOfFile = 0;
 		FILE *filePtr;
+		int sizeOfFile = 0;
 		
 		//Check if its a GET or HEAD
 		if(strcmp(command, "GET ") == 0){
 			//If GET, open file and return 
-			printf("Command: \"GET\" recognized\n");
+			//printf("Command: \"GET\" recognized\n");
 			
 			//Check if valid path
 			int nrOf = 0;
@@ -66,7 +67,7 @@ void* handleMessage(void* client){
 			//printf("Path: %s contains %d\n", path, nrOf);
 			if(nrOf < 4){
 				//Open filepath
-				printf("Valid path: %s\n", path);
+				//printf("Valid path: %s\n", path);
 				filePtr = fopen(path, "r");
 	
 				if(filePtr == NULL){
@@ -74,17 +75,18 @@ void* handleMessage(void* client){
 					printf("Path is NULL\n");
 					char message[26];
 					sprintf(message, "%s 404 Not Found\r\n\r\n", http);
-					if(write(clientfd, &message, sizeof(message)) < 0){
+					if(write(*clientfd, &message, sizeof(message)-2) < 0){
 						printf("Error sending: %s\n", strerror(errno));
 					} //else printf("Message sent: %s\n");
 
 				}
 				else{
-					printf("File opened\n");
+					//printf("File opened\n");
 					//Send OK
 					char message[20];
 					sprintf(message, "%s 200 OK\r\n\r\n", http);
-					if(write(clientfd, &message, sizeof(message)) < 0){
+					//printf("%d, %d\n", sizeof(message), strlen(message));
+					if(write(*clientfd, &message, sizeof(message)-2) < 0){
 						printf("Error sending: %s\n", strerror(errno));
 					} //else printf("Message sent: %s\n");
 				
@@ -93,13 +95,51 @@ void* handleMessage(void* client){
 					sizeOfFile = ftell(filePtr);
 					
 					//Send data
+					//char buffer2[sizeOfFile];
+					fseek(filePtr, 0, SEEK_SET);
+					//fread(buffer2, sizeof(char), sizeof(buffer2), filePtr);
+					//fclose(filePtr);
+					//printf("%d, %d, %d\n", sizeof(buffer2), strlen(buffer2), sizeOfFile);
+					
+					//Loop while buffer has value
+					if(sizeOfFile > 999){
+						printf("Entered\n");
+						for(int i = 0;i < (int)sizeOfFile/1000;i++){
+							printf("Loop: %d\n", i);
+							char buffer3[1000];
+							memset(buffer3, 0, 1000);
+							
+							fread(buffer3, sizeof(char), sizeof(buffer3), filePtr);
+							printf("%d, %d\n", sizeof(buffer3), sizeOfFile);
+							if(write(*clientfd, &buffer3, sizeof(buffer3)) < 0){
+								printf("Error sending: %s\n", strerror(errno));
+							} //else printf("Message sent: %s\n");
+						}
+						int remainingBuffer = sizeOfFile % 1000;
+						if(remainingBuffer > 0){
+							printf("Entered Remaining: %d\n", remainingBuffer);
+							char buffer3[remainingBuffer];
+							fread(buffer3, sizeof(char), sizeof(buffer3), filePtr);
+							
+							if(write(*clientfd, &buffer3, sizeof(buffer3)) < 0){
+								printf("Error sending: %s\n", strerror(errno));
+							} //else printf("Message sent: %s\n");
+						}
+					
+					}
+					else{
 					char buffer2[sizeOfFile];
 					fseek(filePtr, 0, SEEK_SET);
 					fread(buffer2, sizeof(char), sizeof(buffer2), filePtr);
-					fclose(filePtr);
-					if(write(clientfd, &buffer2, sizeof(buffer2)) < 0){
+					//fclose(filePtr);
+					printf("%d, %d, %d\n", sizeof(buffer2), strlen(buffer2), sizeOfFile);
+					if(write(*clientfd, &buffer2, sizeof(buffer2)) < 0){
 							printf("Error sending: %s\n", strerror(errno));
 					} //else printf("Message sent: %s\n");
+					
+					}
+	
+					fclose(filePtr);
 					
 					
 				}
@@ -109,7 +149,7 @@ void* handleMessage(void* client){
 				printf("Path does not exist\n");
 				char message[26];
 				sprintf(message, "%s 404 Not Found\r\n\r\n", http);
-				if(write(clientfd, &message, sizeof(message)) < 0){
+				if(write(*clientfd, &message, sizeof(message)-2) < 0){
 					printf("Error sending: %s\n", strerror(errno));
 				} //else printf("Message sent: %s\n");
 			}
@@ -119,7 +159,7 @@ void* handleMessage(void* client){
 			//If HEAD, make header?
 			char message[20];
 			sprintf(message, "%s 200 OK\r\n\r\n", http);
-			if(write(clientfd, &message, sizeof(message)) < 0){
+			if(write(*clientfd, &message, sizeof(message)-2) < 0){
 				printf("Error sending: %s\n", strerror(errno));
 			} //else printf("Message sent: %s\n");
 		}
@@ -130,13 +170,13 @@ void* handleMessage(void* client){
 			//Add error 400?
 			char message[26];
 			sprintf(message, "%s 404 Not Found\r\n\r\n", http);
-			if(write(clientfd, &message, sizeof(message)) < 0){
+			if(write(*clientfd, &message, sizeof(message)-2) < 0){
 				printf("Error sending: %s\n", strerror(errno));
 			} //else printf("Message sent: %s\n");
 		}	
-		close(clientfd);
 
-		pthread_mutex_unlock(&lock);
+		close(*clientfd);
+
 		pthread_detach(pthread_self());
 		//return NULL;
 }
