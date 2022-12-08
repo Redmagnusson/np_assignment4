@@ -103,11 +103,11 @@ void* handleMessage(void* client){
 					
 					//Loop while buffer has value
 					if(sizeOfFile > 999){
-						printf("Entered\n");
-						for(int i = 0;i < (int)sizeOfFile/1000;i++){
-							printf("Loop: %d\n", i);
-							char buffer3[1000];
-							memset(buffer3, 0, 1000);
+						//printf("Entered\n");
+						for(int i = 0;i < (int)sizeOfFile/999;i++){
+							//printf("Loop: %d\n", i);
+							char buffer3[999];
+							memset(buffer3, 0, 999);
 							
 							fread(buffer3, sizeof(char), sizeof(buffer3), filePtr);
 							printf("%d, %d\n", sizeof(buffer3), sizeOfFile);
@@ -115,7 +115,7 @@ void* handleMessage(void* client){
 								printf("Error sending: %s\n", strerror(errno));
 							} //else printf("Message sent: %s\n");
 						}
-						int remainingBuffer = sizeOfFile % 1000;
+						int remainingBuffer = sizeOfFile % 999;
 						if(remainingBuffer > 0){
 							printf("Entered Remaining: %d\n", remainingBuffer);
 							char buffer3[remainingBuffer];
