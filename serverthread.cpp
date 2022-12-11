@@ -17,9 +17,34 @@
 #include <sys/wait.h>
 #include <pthread.h>
 
+
 int CAP = 2000;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 using namespace std;
+ssize_t sendall(int s, char *buf, int *len)
+{
+
+		printf("entered Sendall\n");
+    ssize_t total = 0;        // how many bytes we've sent
+    ssize_t bytesleft = *len; // how many we have left to send
+    ssize_t n;
+
+    while(total < *len) {
+        n = send(s, buf+total, bytesleft, 0);
+        if (n == -1) {
+         printf("Error Sending: %s\n", strerror(errno));
+         break;
+        }
+        total += n;
+        bytesleft -= n;
+    }
+
+    *len = total; // return number actually sent here
+    //sleep(5);
+		//close(s);
+    //return n==-1?-1:0; // return -1 onm failure, 0 on success
+    return total;
+} 
 void* handleMessage(void* client){
 
 
@@ -100,14 +125,24 @@ void* handleMessage(void* client){
 					//fread(buffer2, sizeof(char), sizeof(buffer2), filePtr);
 					//fclose(filePtr);
 					//printf("%d, %d, %d\n", sizeof(buffer2), strlen(buffer2), sizeOfFile);
+					char buffer3[sizeOfFile];
+					memset(buffer3, 0, sizeOfFile);
+							
+					fread(buffer3, sizeof(char), sizeof(buffer3), filePtr);
 					
+
+					pthread_mutex_lock(&lock);
+					ssize_t test = sendall(*clientfd, buffer3, &sizeOfFile);
+					pthread_mutex_unlock(&lock);
+					printf("Buffer3 size: %d\nSent bytes: %d\n", sizeOfFile, test);
 					//Loop while buffer has value
-					if(sizeOfFile > 999){
+					#ifdef DEBUG
+					if(sizeOfFile > 1500){
 						//printf("Entered\n");
-						for(int i = 0;i < (int)sizeOfFile/999;i++){
+						for(int i = 0;i < (int)sizeOfFile/1500;i++){
 							//printf("Loop: %d\n", i);
-							char buffer3[999];
-							memset(buffer3, 0, 999);
+							//char buffer3[1500];
+							//memset(buffer3, 0, 1500);
 							
 							fread(buffer3, sizeof(char), sizeof(buffer3), filePtr);
 							printf("%d, %d\n", sizeof(buffer3), sizeOfFile);
@@ -118,10 +153,12 @@ void* handleMessage(void* client){
 						int remainingBuffer = sizeOfFile % 999;
 						if(remainingBuffer > 0){
 							printf("Entered Remaining: %d\n", remainingBuffer);
-							char buffer3[remainingBuffer];
-							fread(buffer3, sizeof(char), sizeof(buffer3), filePtr);
+							char buffer4[remainingBuffer];
+							memset(buffer4, 0, remainingBuffer);
 							
-							if(write(*clientfd, &buffer3, sizeof(buffer3)) < 0){
+							fread(buffer4, sizeof(char), sizeof(buffer4), filePtr);
+							printf("%s, %d\n", buffer4, remainingBuffer);
+							if(write(*clientfd, &buffer4, sizeof(buffer4)+2) < 0){
 								printf("Error sending: %s\n", strerror(errno));
 							} //else printf("Message sent: %s\n");
 						}
@@ -138,11 +175,13 @@ void* handleMessage(void* client){
 					} //else printf("Message sent: %s\n");
 					
 					}
+					#endif
 	
-					fclose(filePtr);
+
 					
 					
 				}
+				fclose(filePtr);
 			}
 			else{
 				//Wrong path. Adding error message
@@ -174,10 +213,17 @@ void* handleMessage(void* client){
 				printf("Error sending: %s\n", strerror(errno));
 			} //else printf("Message sent: %s\n");
 		}	
-
-		close(*clientfd);
-
-		pthread_detach(pthread_self());
+	
+		
+		//printf("Closing\n");
+		//pthread_mutex_unlock(&lock);
+		if(close(*clientfd) < 0){
+			printf("Error closing: %s\n", strerror(errno));
+		} else printf("FD closed\n");
+		//sleep(5);
+		if(pthread_detach(pthread_self()) < 0){
+			printf("Error detaching: %s\n", strerror(errno));
+		}
 		//return NULL;
 }
 int main(int argc, char *argv[]){
@@ -250,7 +296,7 @@ int main(int argc, char *argv[]){
 	//pid_t my_pid = getpid();
 	//printf("Forked. PID: %d\n", my_pid);
 
-	signal(SIGPIPE, SIG_IGN);
+	//signal(SIGPIPE, SIG_IGN);
 	while(true){
 	
 	

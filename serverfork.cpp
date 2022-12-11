@@ -18,6 +18,27 @@
 
 int CAP = 2000;
 using namespace std;
+ssize_t sendall(int s, char *buf, int *len)
+{
+		printf("entered Sendall\n");
+    ssize_t total = 0;        // how many bytes we've sent
+    ssize_t bytesleft = *len; // how many we have left to send
+    ssize_t n;
+
+    while(total < *len) {
+        n = send(s, buf+total, bytesleft, 0);
+        if (n == -1) {
+         printf("Error Sending: %s\n", strerror(errno));
+         break;
+        }
+        total += n;
+        bytesleft -= n;
+    }
+
+    *len = total; // return number actually sent here
+    //return n==-1?-1:0; // return -1 onm failure, 0 on success
+    return total;
+} 
 void handleMessage(int* clientfd){
 
 		//printf("Fork entered function\n");
@@ -90,9 +111,10 @@ void handleMessage(int* clientfd){
 					fread(buffer2, sizeof(char), sizeof(buffer2), filePtr);
 					fclose(filePtr);
 					printf("%d, %d, %d\n", sizeof(buffer2), strlen(buffer2), sizeOfFile);
-					if(write(*clientfd, &buffer2, sizeof(buffer2)) < 0){
-							printf("Error sending: %s\n", strerror(errno));
-					} //else printf("Message sent: %s\n");
+					sendall(*clientfd, buffer2, &sizeOfFile);
+					//if(write(*clientfd, &buffer2, sizeof(buffer2)) < 0){
+						//	printf("Error sending: %s\n", strerror(errno));
+					//} //else printf("Message sent: %s\n");
 					
 					
 				}
