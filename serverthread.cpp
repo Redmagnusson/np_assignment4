@@ -16,8 +16,13 @@
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <pthread.h>
-
-
+struct FDdetails
+{
+  struct addrinfo *address;
+  struct sockaddr_in port;
+  int clientSock;
+  int uid;
+};
 int CAP = 2000;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 using namespace std;
@@ -45,13 +50,15 @@ ssize_t sendall(int s, char *buf, int *len)
     //return n==-1?-1:0; // return -1 onm failure, 0 on success
     return total;
 } 
-void* handleMessage(void* client){
+void* handleMessage(void* arg){
 
 
 		//pthread_mutex_lock(&lock);
 		
 		//int clientfd = *(int*) client;
-		int* clientfd = (int*)client;
+		//int clientfd = *((int*)client);
+		FDdetails *currentClient = (FDdetails *)arg;
+		int clientfd = currentClient->clientSock;
 		//printf("Thread entered function\n");
 		char client_message[CAP];
 		memset(client_message, 0, CAP);
@@ -59,8 +66,8 @@ void* handleMessage(void* client){
 
 		//Read Client Data
 		//printf("Reading Data\n");
-		bytesRecv = recv(*clientfd, client_message, CAP, NULL);
-		if(bytesRecv == 0){
+		bytesRecv = recv(clientfd, client_message, CAP, NULL);
+		if(bytesRecv < 0){
 			//Client dropped
 			printf("Failed to recv, dropping client: %s\n", strerror(errno));
 			//return;
@@ -100,7 +107,7 @@ void* handleMessage(void* client){
 					printf("Path is NULL\n");
 					char message[26];
 					sprintf(message, "%s 404 Not Found\r\n\r\n", http);
-					if(write(*clientfd, &message, sizeof(message)-2) < 0){
+					if(write(clientfd, &message, sizeof(message)-2) < 0){
 						printf("Error sending: %s\n", strerror(errno));
 					} //else printf("Message sent: %s\n");
 
@@ -111,7 +118,7 @@ void* handleMessage(void* client){
 					char message[20];
 					sprintf(message, "%s 200 OK\r\n\r\n", http);
 					//printf("%d, %d\n", sizeof(message), strlen(message));
-					if(write(*clientfd, &message, sizeof(message)-2) < 0){
+					if(write(clientfd, &message, sizeof(message)) < 0){
 						printf("Error sending: %s\n", strerror(errno));
 					} //else printf("Message sent: %s\n");
 				
@@ -120,65 +127,16 @@ void* handleMessage(void* client){
 					sizeOfFile = ftell(filePtr);
 					
 					//Send data
-					//char buffer2[sizeOfFile];
 					fseek(filePtr, 0, SEEK_SET);
-					//fread(buffer2, sizeof(char), sizeof(buffer2), filePtr);
-					//fclose(filePtr);
-					//printf("%d, %d, %d\n", sizeof(buffer2), strlen(buffer2), sizeOfFile);
 					char buffer3[sizeOfFile];
 					memset(buffer3, 0, sizeOfFile);
 							
 					fread(buffer3, sizeof(char), sizeof(buffer3), filePtr);
 					
-
-					pthread_mutex_lock(&lock);
-					ssize_t test = sendall(*clientfd, buffer3, &sizeOfFile);
-					pthread_mutex_unlock(&lock);
+					//pthread_mutex_lock(&lock);
+					ssize_t test = sendall(clientfd, buffer3, &sizeOfFile);
+					//pthread_mutex_unlock(&lock);
 					printf("Buffer3 size: %d\nSent bytes: %d\n", sizeOfFile, test);
-					//Loop while buffer has value
-					#ifdef DEBUG
-					if(sizeOfFile > 1500){
-						//printf("Entered\n");
-						for(int i = 0;i < (int)sizeOfFile/1500;i++){
-							//printf("Loop: %d\n", i);
-							//char buffer3[1500];
-							//memset(buffer3, 0, 1500);
-							
-							fread(buffer3, sizeof(char), sizeof(buffer3), filePtr);
-							printf("%d, %d\n", sizeof(buffer3), sizeOfFile);
-							if(write(*clientfd, &buffer3, sizeof(buffer3)) < 0){
-								printf("Error sending: %s\n", strerror(errno));
-							} //else printf("Message sent: %s\n");
-						}
-						int remainingBuffer = sizeOfFile % 999;
-						if(remainingBuffer > 0){
-							printf("Entered Remaining: %d\n", remainingBuffer);
-							char buffer4[remainingBuffer];
-							memset(buffer4, 0, remainingBuffer);
-							
-							fread(buffer4, sizeof(char), sizeof(buffer4), filePtr);
-							printf("%s, %d\n", buffer4, remainingBuffer);
-							if(write(*clientfd, &buffer4, sizeof(buffer4)+2) < 0){
-								printf("Error sending: %s\n", strerror(errno));
-							} //else printf("Message sent: %s\n");
-						}
-					
-					}
-					else{
-					char buffer2[sizeOfFile];
-					fseek(filePtr, 0, SEEK_SET);
-					fread(buffer2, sizeof(char), sizeof(buffer2), filePtr);
-					//fclose(filePtr);
-					printf("%d, %d, %d\n", sizeof(buffer2), strlen(buffer2), sizeOfFile);
-					if(write(*clientfd, &buffer2, sizeof(buffer2)) < 0){
-							printf("Error sending: %s\n", strerror(errno));
-					} //else printf("Message sent: %s\n");
-					
-					}
-					#endif
-	
-
-					
 					
 				}
 				fclose(filePtr);
@@ -188,9 +146,9 @@ void* handleMessage(void* client){
 				printf("Path does not exist\n");
 				char message[26];
 				sprintf(message, "%s 404 Not Found\r\n\r\n", http);
-				if(write(*clientfd, &message, sizeof(message)-2) < 0){
+				if(write(clientfd, &message, sizeof(message)-2) < 0){
 					printf("Error sending: %s\n", strerror(errno));
-				} //else printf("Message sent: %s\n");
+				} else printf("Message sent: %s\n");
 			}
 			
 		}
@@ -198,9 +156,9 @@ void* handleMessage(void* client){
 			//If HEAD, make header?
 			char message[20];
 			sprintf(message, "%s 200 OK\r\n\r\n", http);
-			if(write(*clientfd, &message, sizeof(message)-2) < 0){
+			if(write(clientfd, &message, sizeof(message)) < 0){
 				printf("Error sending: %s\n", strerror(errno));
-			} //else printf("Message sent: %s\n");
+			} else printf("Message sent: %s\n");
 		}
 		
 		//Wrong command. Close connection?
@@ -209,21 +167,22 @@ void* handleMessage(void* client){
 			//Add error 400?
 			char message[26];
 			sprintf(message, "%s 404 Not Found\r\n\r\n", http);
-			if(write(*clientfd, &message, sizeof(message)-2) < 0){
+			if(write(clientfd, &message, sizeof(message)-2) < 0){
 				printf("Error sending: %s\n", strerror(errno));
-			} //else printf("Message sent: %s\n");
+			} else printf("Message sent: %s\n");
 		}	
 	
 		
 		//printf("Closing\n");
-		//pthread_mutex_unlock(&lock);
-		if(close(*clientfd) < 0){
+
+		if(close(clientfd) < 0){
 			printf("Error closing: %s\n", strerror(errno));
 		} else printf("FD closed\n");
 		//sleep(5);
+		//pthread_mutex_unlock(&lock);
 		if(pthread_detach(pthread_self()) < 0){
 			printf("Error detaching: %s\n", strerror(errno));
-		}
+		} else printf("Thread detached\n");
 		//return NULL;
 }
 int main(int argc, char *argv[]){
@@ -311,8 +270,12 @@ int main(int argc, char *argv[]){
 		if(clientfd < 0){
 			printf("Accept error: %s\n", strerror(errno));
 		} //printf("Accepted client\n");
-	
-		pthread_create(&threadID, NULL, handleMessage, (void*) &clientfd);
+
+
+		FDdetails *currentClient = (FDdetails *)malloc(sizeof(FDdetails));
+    memset(currentClient, 0, sizeof(FDdetails));
+    currentClient->clientSock = clientfd;
+		pthread_create(&threadID, NULL, &handleMessage, (void*) currentClient);
   }
   printf("Done.\n");
   return(0);

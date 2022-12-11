@@ -16,7 +16,6 @@
 #include <sys/time.h>
 #include <sys/wait.h>
 
-int CAP = 2000;
 using namespace std;
 ssize_t sendall(int s, char *buf, int *len)
 {
@@ -36,18 +35,17 @@ ssize_t sendall(int s, char *buf, int *len)
     }
 
     *len = total; // return number actually sent here
-    //return n==-1?-1:0; // return -1 onm failure, 0 on success
-    return total;
+    return n==-1?-1:0; // return -1 onm failure, 0 on success
 } 
 void handleMessage(int* clientfd){
 
 		//printf("Fork entered function\n");
-		char client_message[CAP];
-		memset(client_message, 0, CAP);
+		char client_message[100];
+		memset(client_message, 0, 100);
 		int bytesRecv = 0;
 
 		//Read Client Data
-		bytesRecv = recv(*clientfd, client_message, CAP, NULL);
+		bytesRecv = recv(*clientfd, client_message, 100, NULL);
 		if(bytesRecv == 0){
 			//Client dropped
 			printf("Failed to recv, dropping client: %s\n", strerror(errno));
@@ -149,13 +147,18 @@ void handleMessage(int* clientfd){
 				printf("Error sending: %s\n", strerror(errno));
 			} //else printf("Message sent: %s\n");
 		}	
-		
+	
+	
+	command = NULL;
+	path = NULL;
+	http = NULL;
 
 }
 int main(int argc, char *argv[]){
   
 	//Variables
-	char* splits[CAP];
+	char* splits[50];
+	memset(splits, 0, 50);
   char* p = strtok(argv[1], ":");
   int delimCounter = 0;
   char *Desthost;
@@ -216,18 +219,11 @@ int main(int argc, char *argv[]){
 		exit(0);
 	} else printf("Server listening\n");
 	
-	//Fork process (we now have 2 processes)
-	//fork();
-	pid_t my_pid = getpid();
-	//printf("Forked. PID: %d\n", my_pid);
+
+
 
 	while(true){
 	
-	
-	//char buffer2[11000];
-		//Accept Client
-		char server_message[CAP], client_message[CAP];
-		int bytesRecv;
 		struct sockaddr_in clientinfo;
 		socklen_t len = sizeof(clientinfo);
 		int clientfd;
@@ -257,19 +253,15 @@ int main(int argc, char *argv[]){
 			//printf("Fork successfull\n");
 			close(serverfd);
 			handleMessage(&clientfd);
+			close(clientfd);
+			//kill(getpid(), SIGKILL);
+			exit(0);
 		}
 		else{
 		 close(clientfd);
 		 forkID = -1;
 		 }
-		
-		if(forkID == 0){
-			close(clientfd);
-			//kill(getpid(), SIGKILL);
-			exit(0);
-			
-		}
-		//forkID = wait(NULL);
+	
   }
   printf("Done.\n");
   return(0);
