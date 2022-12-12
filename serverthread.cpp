@@ -53,7 +53,7 @@ ssize_t sendall(int s, char *buf, int *len)
 void* handleMessage(void* arg){
 
 
-		//pthread_mutex_lock(&lock);
+		pthread_mutex_lock(&lock);
 		
 		//int clientfd = *(int*) client;
 		//int clientfd = *((int*)client);
@@ -179,7 +179,7 @@ void* handleMessage(void* arg){
 			printf("Error closing: %s\n", strerror(errno));
 		} else printf("FD closed\n");
 		//sleep(5);
-		//pthread_mutex_unlock(&lock);
+		pthread_mutex_unlock(&lock);
 		if(pthread_detach(pthread_self()) < 0){
 			printf("Error detaching: %s\n", strerror(errno));
 		} else printf("Thread detached\n");
@@ -255,7 +255,7 @@ int main(int argc, char *argv[]){
 	//pid_t my_pid = getpid();
 	//printf("Forked. PID: %d\n", my_pid);
 
-	//signal(SIGPIPE, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
 	while(true){
 	
 	

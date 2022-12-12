@@ -15,7 +15,13 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <sys/wait.h>
-
+struct FDdetails
+{
+  struct addrinfo *address;
+  struct sockaddr_in port;
+  int clientSock;
+  int uid;
+};
 using namespace std;
 ssize_t sendall(int s, char *buf, int *len)
 {
@@ -59,7 +65,7 @@ void handleMessage(int* clientfd){
 		http[strlen(http)-1] = NULL;
 		int sizeOfFile = 0;
 		FILE *filePtr;
-		//printf("%s%s%s\n", command, path, http);
+		printf("%s%s%s\n", command, path, http);
 		
 
 		//Check if its a GET or HEAD
@@ -95,7 +101,7 @@ void handleMessage(int* clientfd){
 					//Send OK
 					char message[20];
 					sprintf(message, "%s 200 OK\r\n\r\n", http);
-					if(write(*clientfd, &message, sizeof(message)) < 0){
+					if(write(*clientfd, &message, sizeof(message)-1) < 0){
 						printf("Error sending: %s\n", strerror(errno));
 					} //else printf("Message sent: %s\n");
 				
@@ -108,7 +114,7 @@ void handleMessage(int* clientfd){
 					fseek(filePtr, 0, SEEK_SET);
 					fread(buffer2, sizeof(char), sizeof(buffer2), filePtr);
 					fclose(filePtr);
-					printf("%d, %d, %d\n", sizeof(buffer2), strlen(buffer2), sizeOfFile);
+					printf("%s\n", buffer2);
 					sendall(*clientfd, buffer2, &sizeOfFile);
 					//if(write(*clientfd, &buffer2, sizeof(buffer2)) < 0){
 						//	printf("Error sending: %s\n", strerror(errno));
@@ -232,7 +238,9 @@ int main(int argc, char *argv[]){
 			printf("Accept error: %s\n", strerror(errno));
 		} //printf("Accepted client\n");
 	
-	
+		FDdetails *currentClient = (FDdetails *)malloc(sizeof(FDdetails));
+    memset(currentClient, 0, sizeof(FDdetails));
+    currentClient->clientSock = clientfd;
 		//Fork process
 		
 		pid_t forkID;
@@ -252,14 +260,15 @@ int main(int argc, char *argv[]){
 		if(forkID == 0){
 			//printf("Fork successfull\n");
 			close(serverfd);
-			handleMessage(&clientfd);
+			handleMessage(&currentClient->clientSock);
+			free(currentClient);
 			close(clientfd);
-			//kill(getpid(), SIGKILL);
 			exit(0);
 		}
 		else{
+		 forkID = wait(NULL);
+		 free(currentClient);
 		 close(clientfd);
-		 forkID = -1;
 		 }
 	
   }

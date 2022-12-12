@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##Variables update as to fit your scenario
-portFORK=5000
+portFORK=50000
 portTHREAD=5000
 testing=1
 
@@ -11,7 +11,7 @@ head -c 1000 < /dev/urandom > small
 if [[ "$testing" == "0" ]]; then
     ## Use for Data collection
     echo "Real Data Collection"
-    CONCURRENCY=60
+    CONCURRENCY=10
     REPEAT=32
 else
     ## Use for _TESTING__
@@ -155,3 +155,4 @@ done
 gnuplot dcollect.p
 
 echo "SUMMARY: Did it work?"
+
