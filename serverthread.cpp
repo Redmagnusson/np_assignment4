@@ -107,9 +107,10 @@ void* handleMessage(void* arg){
 					printf("Path is NULL\n");
 					char message[26];
 					sprintf(message, "%s 404 Not Found\r\n\r\n", http);
-					if(write(clientfd, &message, sizeof(message)-2) < 0){
+					if(write(clientfd, &message, sizeof(message)) < 0){
 						printf("Error sending: %s\n", strerror(errno));
 					} //else printf("Message sent: %s\n");
+					return 0;
 
 				}
 				else{
@@ -146,7 +147,7 @@ void* handleMessage(void* arg){
 				printf("Path does not exist\n");
 				char message[26];
 				sprintf(message, "%s 404 Not Found\r\n\r\n", http);
-				if(write(clientfd, &message, sizeof(message)-2) < 0){
+				if(write(clientfd, &message, sizeof(message)) < 0){
 					printf("Error sending: %s\n", strerror(errno));
 				} else printf("Message sent: %s\n");
 			}
@@ -167,7 +168,7 @@ void* handleMessage(void* arg){
 			//Add error 400?
 			char message[26];
 			sprintf(message, "%s 404 Not Found\r\n\r\n", http);
-			if(write(clientfd, &message, sizeof(message)-2) < 0){
+			if(write(clientfd, &message, sizeof(message)) < 0){
 				printf("Error sending: %s\n", strerror(errno));
 			} else printf("Message sent: %s\n");
 		}	
